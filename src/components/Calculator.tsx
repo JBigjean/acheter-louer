@@ -218,7 +218,7 @@ const Calculator = () => {
             <span>Prix du bien immobilier</span>
             <span style={{ color: '#fff' }}>{formatCurrency(price)}</span>
           </label>
-          <input type="range" min="50000" max="1500000" step="10000" value={price} onChange={(e) => setPrice(Number(e.target.value))} className="input-control" />
+          <input type="range" min="50000" max="1500000" step="5000" value={price} onChange={(e) => setPrice(Number(e.target.value))} className="input-control" />
         </div>
 
         <div className="input-group">
@@ -229,13 +229,6 @@ const Calculator = () => {
           <input type="range" min="0" max={price} step="5000" value={apport} onChange={(e) => setApport(Number(e.target.value))} className="input-control" />
         </div>
 
-        <div className="input-group">
-          <label style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Simulation sur {years} ans</span>
-            <span style={{ color: '#fff' }}>{years} ans</span>
-          </label>
-          <input type="range" min="1" max="40" step="1" value={years} onChange={(e) => setYears(Number(e.target.value))} className="input-control" />
-        </div>
 
         <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
           <div className="input-group" style={{ marginBottom: 0 }}>
@@ -329,8 +322,16 @@ const Calculator = () => {
       {/* Results Column */}
       <div className="card glass" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'sticky', top: '2rem', height: 'fit-content', maxHeight: '90vh', overflowY: 'auto' }}>
         <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1.25rem' }}>
-          <BarChart3 size={20} className="text-primary" /> Bilan Patrimonial Final
+          <BarChart3 size={20} className="text-primary" /> Bilan Patrimonial après {years} ans
         </h2>
+
+        <div className="input-group" style={{ marginBottom: 0, padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-md)', border: '1px solid var(--card-border)' }}>
+          <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
+            <span>Durée de la simulation</span>
+            <span style={{ color: '#fff', fontWeight: 600 }}>{years} ans</span>
+          </label>
+          <input type="range" min="1" max="40" step="1" value={years} onChange={(e) => setYears(Number(e.target.value))} className="input-control" />
+        </div>
 
         <div className={`stat-card ${results.isBuyingBetter ? 'success' : 'danger'}`} style={{ 
           border: '1px solid', 

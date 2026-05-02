@@ -4,23 +4,23 @@ import { Calculator as CalcIcon, Home, Key, TrendingUp, BarChart3, Info, Percent
 const Calculator = () => {
   // --- BUY INPUTS ---
   const [price, setPrice] = useState(300000);
-  const [apport, setApport] = useState(50000); // New: Apport personnel
+  const [apport, setApport] = useState(50000);
   const [notaryRate, setNotaryRate] = useState(7.5);
   const [loanDuration, setLoanDuration] = useState(25);
   const [interestRate, setInterestRate] = useState(3.5);
-  const [insuranceRate, setInsuranceRate] = useState(0.36); // Assurance emprunteur
-  const [homeInsurance, setHomeInsurance] = useState(350); // Assurance habitation annelle
+  const [insuranceRate, setInsuranceRate] = useState(0.36);
+  const [homeInsurance, setHomeInsurance] = useState(350);
   const [propertyTax, setPropertyTax] = useState(1200);
-  const [propertyTaxIncrease, setPropertyTaxIncrease] = useState(3); // New: Property tax annual increase
-  const [condoFees, setCondoFees] = useState(150); // monthly
+  const [propertyTaxIncrease, setPropertyTaxIncrease] = useState(3);
+  const [condoFees, setCondoFees] = useState(150);
   const [maintenanceRate, setMaintenanceRate] = useState(1.5);
   const [resaleAgencyRate, setResaleAgencyRate] = useState(5);
-  const [appreciationRate, setAppreciationRate] = useState(1.5); // Property appreciation per year
+  const [appreciationRate, setAppreciationRate] = useState(1.5);
 
   // --- RENT INPUTS ---
   const [rentPrice, setRentPrice] = useState(1200);
-  const [rentIncrease, setRentIncrease] = useState(2); // Inflation/Indexation des loyers
-  const [investmentReturn, setInvestmentReturn] = useState(4); // Placement de l'apport
+  const [rentIncrease, setRentIncrease] = useState(2);
+  const [investmentReturn, setInvestmentReturn] = useState(4);
   
   // --- GLOBAL ---
   const [years, setYears] = useState(10); 
@@ -34,20 +34,57 @@ const Calculator = () => {
     buyNetPosition: 0,
     rentNetPosition: 0,
     isBuyingBetter: false,
-    loanAmount: 0
+    loanAmount: 0,
+    breakdown: {
+      buy: { interest: 0, insurance: 0, tax: 0, condo: 0, maintenance: 0, notary: 0, resale: 0, appreciation: 0, savingsInterest: 0 },
+      rent: { totalRent: 0, capitalGrowth: 0, savingsInterest: 0 }
+    }
   });
 
+  // Load from localStorage
   useEffect(() => {
+    const saved = localStorage.getItem('acheter-louer-data');
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        if (data.price) setPrice(data.price);
+        if (data.apport !== undefined) setApport(data.apport);
+        if (data.notaryRate) setNotaryRate(data.notaryRate);
+        if (data.loanDuration) setLoanDuration(data.loanDuration);
+        if (data.interestRate) setInterestRate(data.interestRate);
+        if (data.insuranceRate) setInsuranceRate(data.insuranceRate);
+        if (data.homeInsurance) setHomeInsurance(data.homeInsurance);
+        if (data.propertyTax) setPropertyTax(data.propertyTax);
+        if (data.propertyTaxIncrease) setPropertyTaxIncrease(data.propertyTaxIncrease);
+        if (data.condoFees) setCondoFees(data.condoFees);
+        if (data.maintenanceRate) setMaintenanceRate(data.maintenanceRate);
+        if (data.resaleAgencyRate) setResaleAgencyRate(data.resaleAgencyRate);
+        if (data.appreciationRate) setAppreciationRate(data.appreciationRate);
+        if (data.rentPrice) setRentPrice(data.rentPrice);
+        if (data.rentIncrease) setRentIncrease(data.rentIncrease);
+        if (data.investmentReturn) setInvestmentReturn(data.investmentReturn);
+        if (data.years) setYears(data.years);
+      } catch (e) {
+        console.error('Failed to load saved data', e);
+      }
+    }
+  }, []);
+
+  // Save to localStorage
+  useEffect(() => {
+    const data = {
+      price, apport, notaryRate, loanDuration, interestRate, insuranceRate, 
+      homeInsurance, propertyTax, propertyTaxIncrease, condoFees, 
+      maintenanceRate, resaleAgencyRate, appreciationRate, 
+      rentPrice, rentIncrease, investmentReturn, years
+    };
+    localStorage.setItem('acheter-louer-data', JSON.stringify(data));
     calculate();
   }, [price, apport, notaryRate, loanDuration, interestRate, insuranceRate, homeInsurance, propertyTax, propertyTaxIncrease, condoFees, maintenanceRate, resaleAgencyRate, appreciationRate, rentPrice, rentIncrease, investmentReturn, years]);
 
   const calculate = () => {
     // 1. BUYING CALCULATIONS
     const notaryFees = price * (notaryRate / 100);
-    
-    // Loan logic: Apport covers notary fees first, the rest reduces the price.
-    // If apport < notary fees, we assume the loan covers the rest (not common but possible in some scenarios, 
-    // but here we'll assume loan = price - (apport - notaryFees)).
     const cashUsedForPrice = Math.max(0, apport - notaryFees);
     const loanAmount = Math.max(0, price - cashUsedForPrice);
     
@@ -58,57 +95,111 @@ const Calculator = () => {
       : 0;
     const monthlyLoanInsurance = (loanAmount * (insuranceRate / 100)) / 12;
     
-    let buySpentAccumulated = notaryFees + cashUsedForPrice; // Initial cash outflow
+    let buySpentAccumulated = notaryFees + cashUsedForPrice; 
     let currentLoanBalance = loanAmount;
     let simulatedPrice = price;
     let currentPropertyTax = propertyTax;
+    let buyInvestedDifference = 0; 
+    
+    const buyBreakdown = {
+      interest: 0,
+      insurance: 0,
+      tax: 0,
+      condo: 0,
+      maintenance: 0,
+      notary: notaryFees,
+      resale: 0,
+      appreciation: 0,
+      savingsCapital: 0,
+      savingsInterest: 0
+    };
+
+    // 2. RENTING CALCULATIONS
+    let rentSpentAccumulated = 0;
+    let renterInvestedCapital = apport; 
+    let currentRent = rentPrice;
+    
+    const rentBreakdown = {
+      totalRent: 0,
+      capitalGrowth: 0,
+      savingsCapital: 0,
+      savingsInterest: 0
+    };
 
     for (let y = 1; y <= years; y++) {
-      // Annual costs
-      buySpentAccumulated += homeInsurance + currentPropertyTax + (simulatedPrice * (maintenanceRate / 100));
+      const annualHomeInsurance = homeInsurance;
+      const annualMaintenance = simulatedPrice * (maintenanceRate / 100);
       
       for (let m = 1; m <= 12; m++) {
         const totalMonths = (y - 1) * 12 + m;
+        
+        // --- Monthly Buy Costs ---
+        let monthlyBuyOutflow = condoFees + (currentPropertyTax / 12) + (annualHomeInsurance / 12) + (annualMaintenance / 12);
+        buyBreakdown.condo += condoFees;
+        buyBreakdown.tax += currentPropertyTax / 12;
+        buyBreakdown.maintenance += annualMaintenance / 12;
+        buyBreakdown.insurance += annualHomeInsurance / 12;
+
         if (totalMonths <= numPayments) {
           const interestPayment = currentLoanBalance * monthlyRate;
           const principalPayment = monthlyMortgage - interestPayment;
           currentLoanBalance -= principalPayment;
-          buySpentAccumulated += interestPayment + monthlyLoanInsurance;
+          monthlyBuyOutflow += monthlyMortgage + monthlyLoanInsurance;
+          
+          buyBreakdown.interest += interestPayment;
+          buyBreakdown.insurance += monthlyLoanInsurance;
         }
-        buySpentAccumulated += condoFees;
+        buySpentAccumulated += monthlyBuyOutflow;
+
+        // --- Monthly Rent Costs ---
+        const monthlyRentOutflow = currentRent;
+        rentSpentAccumulated += monthlyRentOutflow;
+        rentBreakdown.totalRent += monthlyRentOutflow;
+
+        // --- Opportunity Cost Logic ---
+        if (monthlyBuyOutflow > monthlyRentOutflow) {
+          const diff = monthlyBuyOutflow - monthlyRentOutflow;
+          const prevCapital = renterInvestedCapital;
+          renterInvestedCapital += diff;
+          rentBreakdown.savingsCapital += diff;
+          renterInvestedCapital *= (1 + (investmentReturn / 100 / 12));
+          rentBreakdown.savingsInterest += (renterInvestedCapital - prevCapital - diff);
+        } else {
+          const diff = monthlyRentOutflow - monthlyBuyOutflow;
+          const prevInv = buyInvestedDifference;
+          buyInvestedDifference += diff;
+          buyBreakdown.savingsCapital += diff;
+          buyInvestedDifference *= (1 + (investmentReturn / 100 / 12));
+          buyBreakdown.savingsInterest += (buyInvestedDifference - prevInv - diff);
+        }
       }
+      
       simulatedPrice *= (1 + (appreciationRate / 100));
-      currentPropertyTax *= (1 + (propertyTaxIncrease / 100)); // Apply increase
+      currentPropertyTax *= (1 + (propertyTaxIncrease / 100));
+      currentRent *= (1 + (rentIncrease / 100));
     }
 
     const sellingFees = simulatedPrice * (resaleAgencyRate / 100);
-    const buyFinalEquity = simulatedPrice - currentLoanBalance - sellingFees;
-    const buyNetPosition = buyFinalEquity - buySpentAccumulated;
-
-    // 2. RENTING CALCULATIONS
-    let rentSpentAccumulated = 0;
-    let investedCapital = apport; // The whole apport is invested if renting
-    let currentRent = rentPrice;
-
-    for (let y = 1; y <= years; y++) {
-      for (let m = 1; m <= 12; m++) {
-        rentSpentAccumulated += currentRent;
-        investedCapital *= (1 + (investmentReturn / 100 / 12));
-      }
-      currentRent *= (1 + (rentIncrease / 100));
-    }
+    buyBreakdown.resale = sellingFees;
+    buyBreakdown.appreciation = simulatedPrice - price;
     
-    const rentNetPosition = investedCapital - rentSpentAccumulated;
+    const initialApportGrowth = apport * (Math.pow(1 + investmentReturn/100, years) - 1);
+    rentBreakdown.capitalGrowth = initialApportGrowth;
+
+    const buyFinalEquity = simulatedPrice - currentLoanBalance - sellingFees;
+    const buyFinalWealth = buyFinalEquity + buyInvestedDifference;
+    const rentFinalWealth = renterInvestedCapital;
 
     setResults({
       buyTotalSpent: buySpentAccumulated,
       rentTotalSpent: rentSpentAccumulated,
       buyEquity: buyFinalEquity,
-      rentEquity: investedCapital,
-      buyNetPosition,
-      rentNetPosition,
-      isBuyingBetter: buyNetPosition > rentNetPosition,
-      loanAmount
+      rentEquity: renterInvestedCapital,
+      buyNetPosition: buyFinalWealth,
+      rentNetPosition: rentFinalWealth,
+      isBuyingBetter: buyFinalWealth > rentFinalWealth,
+      loanAmount,
+      breakdown: { buy: buyBreakdown, rent: rentBreakdown }
     });
   };
 
@@ -228,7 +319,7 @@ const Calculator = () => {
               <input type="number" step="0.1" value={rentIncrease} onChange={(e) => setRentIncrease(Number(e.target.value))} className="input-control" />
             </div>
             <div className="input-group">
-              <label>Rendement Apport (%)</label>
+              <label>Placement (%)</label>
               <input type="number" step="0.1" value={investmentReturn} onChange={(e) => setInvestmentReturn(Number(e.target.value))} className="input-control" />
             </div>
           </div>
@@ -236,9 +327,9 @@ const Calculator = () => {
       </div>
 
       {/* Results Column */}
-      <div className="card glass" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'sticky', top: '2rem', height: 'fit-content' }}>
+      <div className="card glass" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'sticky', top: '2rem', height: 'fit-content', maxHeight: '90vh', overflowY: 'auto' }}>
         <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1.25rem' }}>
-          <BarChart3 size={20} className="text-primary" /> Bilan patrimonial
+          <BarChart3 size={20} className="text-primary" /> Bilan Patrimonial Final
         </h2>
 
         <div className={`stat-card ${results.isBuyingBetter ? 'success' : 'danger'}`} style={{ 
@@ -247,7 +338,7 @@ const Calculator = () => {
           background: results.isBuyingBetter ? 'rgba(16, 185, 129, 0.05)' : 'rgba(239, 68, 68, 0.05)',
           padding: '2rem'
         }}>
-          <div className="stat-label">Décision optimisée</div>
+          <div className="stat-label">Valeur Nette du Patrimoine</div>
           <div className="stat-value" style={{ 
             color: results.isBuyingBetter ? '#10b981' : '#ef4444',
             fontSize: '2.5rem',
@@ -256,61 +347,129 @@ const Calculator = () => {
             {results.isBuyingBetter ? 'ACHETER' : 'LOUER'}
           </div>
           <div style={{ marginTop: '0.5rem', opacity: 0.8 }}>
-            Différence : <span style={{ fontWeight: 700 }}>{formatCurrency(Math.abs(results.buyNetPosition - results.rentNetPosition))}</span>
+            Avantage : <span style={{ fontWeight: 700 }}>{formatCurrency(Math.abs(results.buyNetPosition - results.rentNetPosition))}</span>
           </div>
         </div>
 
-        {/* Visual Comparison Bars */}
-        <div style={{ marginTop: '1rem' }}>
+        {/* Comparison Bars */}
+        <div style={{ marginTop: '0.5rem' }}>
            <div style={{ marginBottom: '1.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
-                <span>Patrimoine net (Achat)</span>
+                <span style={{ color: 'var(--text-muted)' }}>Patrimoine Final (Achat)</span>
                 <span style={{ fontWeight: 600 }}>{formatCurrency(results.buyNetPosition)}</span>
               </div>
               <div style={{ width: '100%', height: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', overflow: 'hidden' }}>
                 <div style={{ 
-                  width: `${Math.max(10, (results.buyNetPosition / Math.max(results.buyNetPosition, results.rentNetPosition)) * 100)}%`, 
+                  width: `${Math.max(5, (results.buyNetPosition / Math.max(results.buyNetPosition, results.rentNetPosition)) * 100)}%`, 
                   height: '100%', 
                   background: 'var(--primary)',
-                  transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+                  transition: 'width 0.5s'
                 }} />
               </div>
            </div>
 
            <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
-                <span>Patrimoine net (Location)</span>
+                <span style={{ color: 'var(--text-muted)' }}>Patrimoine Final (Location)</span>
                 <span style={{ fontWeight: 600 }}>{formatCurrency(results.rentNetPosition)}</span>
               </div>
               <div style={{ width: '100%', height: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', overflow: 'hidden' }}>
                 <div style={{ 
-                  width: `${Math.max(10, (results.rentNetPosition / Math.max(results.buyNetPosition, results.rentNetPosition)) * 100)}%`, 
+                  width: `${Math.max(5, (results.rentNetPosition / Math.max(results.buyNetPosition, results.rentNetPosition)) * 100)}%`, 
                   height: '100%', 
                   background: 'var(--secondary)',
-                  transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+                  transition: 'width 0.5s'
                 }} />
               </div>
            </div>
         </div>
 
-        <div className="glass" style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.01)', marginTop: '1rem' }}>
-          <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1rem', color: 'var(--text-muted)' }}>Récapitulatif Achat</h3>
-          <ul style={{ listStyle: 'none', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            <li style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-              <span>Dépenses cumulées:</span> <span style={{ color: '#fff' }}>{formatCurrency(results.buyTotalSpent)}</span>
-            </li>
-            <li style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-              <span>Valeur estimée du bien:</span> <span style={{ color: '#fff' }}>{formatCurrency(price * Math.pow(1 + appreciationRate/100, years))}</span>
-            </li>
-            <li style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Capital remboursé:</span> <span style={{ color: '#fff' }}>{formatCurrency(results.buyEquity)}</span>
-            </li>
-          </ul>
+        <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="glass" style={{ padding: '1rem', background: 'rgba(255,255,255,0.01)' }}>
+            <h3 style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Total Dépensé</h3>
+            <div style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 600 }}>{formatCurrency(results.buyTotalSpent)}</div>
+            <div style={{ fontSize: '0.7rem', opacity: 0.6 }}>Achat</div>
+          </div>
+          <div className="glass" style={{ padding: '1rem', background: 'rgba(255,255,255,0.01)' }}>
+            <h3 style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Total Dépensé</h3>
+            <div style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 600 }}>{formatCurrency(results.rentTotalSpent)}</div>
+            <div style={{ fontSize: '0.7rem', opacity: 0.6 }}>Location</div>
+          </div>
+        </div>
+
+        {/* Detailed Breakdown Section */}
+        <div style={{ marginTop: '1rem', borderTop: '1px solid var(--card-border)', paddingTop: '1.5rem' }}>
+          <h3 style={{ fontSize: '0.9rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <ShieldCheck size={18} className="text-primary" /> Détails financiers sur {years} ans
+          </h3>
+          
+          <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+            {/* Buying Details */}
+            <div>
+              <h4 style={{ fontSize: '0.75rem', color: 'var(--primary)', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.5px' }}>Détails Achat</h4>
+              
+              <div style={{ marginBottom: '1.5rem' }}>
+                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>SOMMES DÉPENSÉES (PERDUES)</p>
+                <div style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Frais Notaire:</span> <span>{formatCurrency(results.breakdown.buy.notary)}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Intérêts Prêt:</span> <span>{formatCurrency(results.breakdown.buy.interest)}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Assurances:</span> <span>{formatCurrency(results.breakdown.buy.insurance)}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Taxes Foncières:</span> <span>{formatCurrency(results.breakdown.buy.tax)}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Charges Copro:</span> <span>{formatCurrency(results.breakdown.buy.condo)}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Entretien:</span> <span>{formatCurrency(results.breakdown.buy.maintenance)}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Frais Revente:</span> <span>{formatCurrency(results.breakdown.buy.resale)}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.05)', fontWeight: 600 }}>
+                    <span>TOTAL DÉPENSÉ:</span> <span>{formatCurrency(results.breakdown.buy.notary + results.breakdown.buy.interest + results.breakdown.buy.insurance + results.breakdown.buy.tax + results.breakdown.buy.condo + results.breakdown.buy.maintenance + results.breakdown.buy.resale)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>GAINS ET PATRIMOINE</p>
+                <div style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Plus-value Bien:</span> <span style={{ color: '#10b981' }}>+{formatCurrency(results.breakdown.buy.appreciation)}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Capital Épargné:</span> <span>+{formatCurrency(results.breakdown.buy.savingsCapital)}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Intérêts Épargne:</span> <span style={{ color: '#10b981' }}>+{formatCurrency(results.breakdown.buy.savingsInterest)}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.05)', fontWeight: 600 }}>
+                    <span>PATRIMOINE FINAL:</span> <span style={{ color: 'var(--primary)' }}>{formatCurrency(results.buyNetPosition)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Renting Details */}
+            <div>
+              <h4 style={{ fontSize: '0.75rem', color: 'var(--secondary)', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.5px' }}>Détails Location</h4>
+              
+              <div style={{ marginBottom: '1.5rem' }}>
+                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>SOMMES DÉPENSÉES (PERDUES)</p>
+                <div style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Loyers Totaux:</span> <span>{formatCurrency(results.breakdown.rent.totalRent)}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.05)', fontWeight: 600 }}>
+                    <span>TOTAL DÉPENSÉ:</span> <span>{formatCurrency(results.breakdown.rent.totalRent)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>GAINS ET PATRIMOINE</p>
+                <div style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Apport Initial:</span> <span>{formatCurrency(apport)}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Plus-value Apport:</span> <span style={{ color: '#10b981' }}>+{formatCurrency(results.breakdown.rent.capitalGrowth)}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Capital Épargné:</span> <span>+{formatCurrency(results.breakdown.rent.savingsCapital)}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Intérêts Épargne:</span> <span style={{ color: '#10b981' }}>+{formatCurrency(results.breakdown.rent.savingsInterest)}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.05)', fontWeight: 600 }}>
+                    <span>PATRIMOINE FINAL:</span> <span style={{ color: 'var(--secondary)' }}>{formatCurrency(results.rentNetPosition)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'flex-start', gap: '0.75rem', padding: '1rem', borderRadius: 'var(--radius-md)', background: 'rgba(37, 99, 235, 0.05)', border: '1px solid rgba(37, 99, 235, 0.1)', color: 'var(--text-muted)', fontSize: '0.75rem', lineHeight: '1.4' }}>
           <Info size={16} style={{ color: 'var(--primary)', flexShrink: 0, marginTop: '2px' }} />
-          <p>Le patrimoine net correspond à la valeur finale (bien revendu ou capital placé) moins toutes les sommes dépensées durant {years} ans.</p>
+          <p>Le <strong>Patrimoine Final</strong> inclut la valeur du bien (après revente) ou le capital placé, <strong>plus</strong> les intérêts générés par le placement de l'économie mensuelle (coût d'opportunité).</p>
         </div>
       </div>
     </div>

@@ -5,5 +5,7 @@ import react from '@astrojs/react';
 
 // https://astro.build/config
 export default defineConfig({
-  integrations: [react()]
+  site: 'https://jbigjean.github.io',
+  base: '/acheter-louer',
+  integrations: [react()],
 });

@@ -1,7 +1,7 @@
 ---
 import '../styles/index.css';
 import Calculator from '../components/Calculator';
-import FAQ from '../components/FAQ';
+import SimulationLimits from '../components/FAQ';
 ---
 
 <html lang="fr">
@@ -28,13 +28,13 @@ import FAQ from '../components/FAQ';
 				<div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.875rem;">
 					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #f59e0b;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
 					<span>Note : Cette simulation comporte des limites importantes.</span>
-					<a href="#faq" style="color: var(--primary); text-decoration: none; font-weight: 500; border-bottom: 1px solid transparent; transition: border-color 0.2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='transparent'">Lire la FAQ</a>
+					<a href="#faq" style="color: var(--primary); text-decoration: none; font-weight: 500; border-bottom: 1px solid transparent; transition: border-color 0.2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='transparent'">Limites & Hypothèses</a>
 				</div>
 			</header>
 
 			<Calculator client:load />
 
-			<FAQ client:load />
+			<SimulationLimits client:load />
 
 			<footer style="margin-top: 6rem; padding: 4rem 0; border-top: 1px solid var(--card-border); text-align: center; color: var(--text-muted); font-size: 0.875rem;">
 				<p>© 2026 Comparateur Immobilier. Les calculs sont basés sur des estimations et ne remplacent pas l'avis d'un professionnel.</p>

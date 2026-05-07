@@ -55,11 +55,11 @@ const FAQItem = ({ question, answer, icon: Icon }: { question: string; answer: R
   );
 };
 
-const FAQ = () => {
+const SimulationLimits = () => {
   return (
     <section id="faq" style={{ marginTop: '4rem', maxWidth: '900px', margin: '4rem auto 0' }}>
       <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-        <h2 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Comprendre les limites de la simulation</h2>
+        <h2 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Limites & Hypothèses de la simulation</h2>
         <p style={{ color: 'var(--text-muted)' }}>
           Une simulation financière n'est pas une boule de cristal. Voici les nuances importantes à garder en tête.
         </p>
@@ -116,4 +116,4 @@ const FAQ = () => {
   );
 };
 
-export default FAQ;
+export default SimulationLimits;
